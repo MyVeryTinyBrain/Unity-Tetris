@@ -357,6 +357,21 @@ public class GameLogic : MonoBehaviour
     public void TryRotateHandlingBlocks()
     {
         BlockSet rotated = BlockSet.Rotate(handlingBlocks);
+
+        // 회전했을때 스테이지 밖으로 빠져나가면 스테이지 안으로 이동시킨다.
+        for (int i = 0; i < rotated.count; ++i)
+        {
+            Vector2Int worldPosition = rotated.GetBlockWorldPosition(i);
+            if (worldPosition.x < 0)
+            {
+                rotated.pivot.x -= worldPosition.x;
+            }
+            else if (worldPosition.x >= DeviceContext.SizeX)
+            {
+                rotated.pivot.x -= (worldPosition.x - DeviceContext.SizeX + 1);
+            }
+        }
+
         if (EmptyArea(rotated) == false)
         {
             return;
