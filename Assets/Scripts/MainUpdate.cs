@@ -21,7 +21,7 @@ public class MainUpdate : MonoBehaviour
 
     bool redraw = false;
 
-    private void Awake()
+    private void Start()
     {
         StartTickRoutine();
     }

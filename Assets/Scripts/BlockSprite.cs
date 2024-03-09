@@ -15,7 +15,7 @@ public class BlockSprite : MonoBehaviour
 
     Coroutine animationRoutine;
 
-    public const float AnimationTransformScale = 1.5f;
+    public const float AnimationTransformScale = 1.6f;
 
     public bool isPlayingAnimation => (animationRoutine != null);
 
@@ -23,6 +23,12 @@ public class BlockSprite : MonoBehaviour
     {
         get => fillSprite.color;
         set => fillSprite.color = value;
+    }
+
+    public Color borderColor
+    {
+        get => borderSprite.color;
+        set => borderSprite.color = value;
     }
 
     public void PlayAnimation(float duration, bool loop = false)

@@ -110,8 +110,10 @@ public class GameLogic : MonoBehaviour
 
     IEnumerator RemoveLinesRoutine(IDeviceContext dc)
     {
+        // 제거하는 동안 애니메이션을 재생하기에 모든 동작을 중지한다.
         pause = true;
 
+        // 맨 위부터 지워야 할 줄 탐색
         List<int> removeYTargets = new List<int>();
         for (int y = DeviceContext.SizeY - 1; y >= 0; --y)
         {
@@ -129,12 +131,14 @@ public class GameLogic : MonoBehaviour
             }
         }
 
-        if(removeYTargets.Count == 0)
+        // 지워야 할 줄이 없으면 종료
+        if (removeYTargets.Count == 0)
         {
             pause = false;
             yield return null;
         }
 
+        // 지워야 할 줄에 애니메이션 재생
         DeviceContext DC = dc as DeviceContext;
         foreach (int y in removeYTargets)
         {
@@ -144,7 +148,11 @@ public class GameLogic : MonoBehaviour
             }
         }
         DC.Redraw();
-        yield return new WaitForSeconds(0.2f);
+
+        // 애니메이션 재생시간동안 대기
+        yield return new WaitForSeconds(DeviceContext.AnimationDuration);
+
+        // 애니메이션 중지
         foreach (int y in removeYTargets)
         {
             for (int x = 0; x < DeviceContext.SizeX; ++x)
@@ -154,6 +162,7 @@ public class GameLogic : MonoBehaviour
         }
         DC.Redraw();
 
+        // 지워야 할 줄을 제거하고 블록을 아래로 내린다.
         foreach (int y in removeYTargets)
         {
             for (int x = 0; x < DeviceContext.SizeX; ++x)
@@ -167,6 +176,7 @@ public class GameLogic : MonoBehaviour
         ApplyHandlingBlocksColor(dc);
         DC.Redraw();
 
+        // 동작 재개
         pause = false;
     }
 
@@ -224,9 +234,26 @@ public class GameLogic : MonoBehaviour
         {
             return;
         }
+
+        // 조작중인 블럭들을 표시한다.
+        int MinX = int.MaxValue, MaxX = int.MinValue, MaxY = int.MinValue;
         for (int i = 0; i < handlingBlocks.count; ++i)
         {
-            dc.SetBufferColor(handlingBlocks.GetBlockWorldPosition(i), handlingBlocks.blocks[i].color);
+            Vector2Int worldPosition = handlingBlocks.GetBlockWorldPosition(i);
+            dc.SetBufferColor(worldPosition, handlingBlocks.blocks[i].color);
+            MinX = Mathf.Min(MinX, worldPosition.x);
+            MaxX = Mathf.Max(MaxX, worldPosition.x);
+            MaxY = Mathf.Max(MaxY, worldPosition.y);
+        }
+
+        // 조작중인 블럭이 존재하는 세로줄의 색상을 변경한다. (헬퍼 기능)
+        for (int y = 0; y < DeviceContext.SizeY; y++)
+        {
+            for (int x = 0; x < DeviceContext.SizeX; x++)
+            {
+                Color borderColor = (x >= MinX && x <= MaxX && y <= MaxY ? new Color(0.5f, 0.5f, 0.5f, 1.0f) : DeviceContext.OriginBorderColor);
+                dc.SetBufferBorderColor(new Vector2Int(x, y), borderColor);
+            }
         }
     }
 
@@ -247,14 +274,23 @@ public class GameLogic : MonoBehaviour
         for (int i = 0; i < blockSet.count; ++i)
         {
             Vector2Int worldPosition = blockSet.GetBlockWorldPosition(i);
-            if (worldPosition.x < 0 || worldPosition.y < 0 || worldPosition.x >= DeviceContext.SizeX || worldPosition.y >= DeviceContext.SizeY)
+            if (false == EmptyArea(worldPosition))
             {
                 return false;
             }
-            if (blockGrid[worldPosition.y, worldPosition.x] != DeviceContext.ClearColor)
-            {
-                return false;
-            }
+        }
+        return true;
+    }
+
+    bool EmptyArea(Vector2Int position)
+    {
+        if (position.x < 0 || position.y < 0 || position.x >= DeviceContext.SizeX || position.y >= DeviceContext.SizeY)
+        {
+            return false;
+        }
+        if (blockGrid[position.y, position.x] != DeviceContext.ClearColor)
+        {
+            return false;
         }
         return true;
     }
@@ -311,11 +347,16 @@ public class GameLogic : MonoBehaviour
         return blockSet;
     }
 
+    readonly Vector2Int[] FixDirections = new Vector2Int[]
+    {
+        new Vector2Int(-1,0),
+        new Vector2Int(+1,0),
+        new Vector2Int(0,-1),
+        new Vector2Int(0,+1),
+    };
     public void TryRotateHandlingBlocks()
     {
         BlockSet rotated = BlockSet.Rotate(handlingBlocks);
-
-        // 회전할 공간이 없으면 회전 결과를 버립니다.
         if (EmptyArea(rotated) == false)
         {
             return;
